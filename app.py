@@ -1,14 +1,11 @@
 import streamlit as st
 
-st.set_page_config(page_title="Bài Học STEM - Trò Chơi Đua Vịt", page_icon="🦆", layout="centered")
+st.set_page_config(page_title="Cuộc Đua Vịt Vui Nhộn", page_icon="🦆", layout="centered")
 
-st.title("🦆 Bài Học STEM: Trò Chơi Đua Vịt Tương Tác")
-st.write("Nhập danh sách tên các bạn trong lớp để tạo những chú vịt thi đua bơi về đích nhé!")
+st.title("🦆 Trò Chơi Đua Vịt - Phong Cách STEM")
+st.write("Nhập danh sách tên để bắt đầu cuộc đua vượt sông nhé!")
 
-# Khung nhập tên danh sách người chơi
-names_input = st.text_input("Nhập tên mọi người (cách nhau bởi dấu phẩy):", "Tân, Hòa, Nam, Lan, An")
-
-# Xử lý chuỗi tên
+names_input = st.text_input("Nhập tên các chú vịt (cách nhau bởi dấu phẩy):", "Tân, Linh, Nam, Lan, An, Long, Vy")
 names_list = [name.strip() for name in names_input.split(",") if name.strip()]
 
 game_code = f"""
@@ -16,133 +13,169 @@ game_code = f"""
 <html>
 <head>
     <style>
-        body {{ margin: 0; background: #e0f7fa; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }}
-        canvas {{ background: linear-gradient(to bottom, #4fc3f7, #0288d1); display: block; margin: 10px auto; border-radius: 12px; cursor: pointer; box-shadow: 0 6px 15px rgba(0,0,0,0.3); }}
-        #score {{ font-size: 20px; font-weight: bold; color: #0277bd; margin-top: 5px; }}
+        body {{ margin: 0; background: #b2ebf2; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }}
+        canvas {{ background: linear-gradient(to bottom, #4fc3f7, #0288d1); display: block; margin: 10px auto; border-radius: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.3); }}
+        #ui-bar {{ display: flex; justify-content: space-between; align-items: center; width: 700px; margin: 0 auto; padding: 5px 10px; box-sizing: border-box; }}
+        .btn {{ background: rgba(255, 255, 255, 0.8); border: none; padding: 6px 14px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }}
+        .btn:hover {{ background: #ffffff; }}
+        #timer {{ background: rgba(255, 255, 255, 0.85); padding: 5px 15px; border-radius: 15px; font-weight: bold; font-size: 16px; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }}
     </style>
 </head>
 <body>
-    <div id="score">🎯 Bấm vào các chú vịt để tăng tốc về đích!</div>
-    <canvas id="gameCanvas" width="700" height="420"></canvas>
+    <div id="ui-bar">
+        <button class="btn" id="pauseBtn" onclick="togglePause()">⏸️ Tạm dừng</button>
+        <div id="timer">⏱️ 00:00</div>
+        <button class="btn" onclick="resetGame()">🔄 Chơi lại</button>
+    </div>
+
+    <canvas id="gameCanvas" width="700" height="400"></canvas>
+
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
-        const scoreEl = document.getElementById("score");
+        const timerEl = document.getElementById("timer");
 
         const rawNames = {names_list};
         const colors = ["#ff5252", "#ffeb3b", "#4caf50", "#2196f3", "#ab47bc", "#ff9800", "#e91e63", "#00bcd4"];
         
         let ducks = [];
+        let isPaused = false;
+        let startTime = Date.now();
+        let elapsedTime = 0;
+        let raceFinished = false;
 
-        // Khởi tạo danh sách vịt dựa trên tên người chơi nhập vào
-        rawNames.forEach((name, index) => {{
-            ducks.push({{
-                name: name,
-                x: 70, // Bắt đầu từ vạch xuất phát
-                y: 70 + index * 55,
-                speed: Math.random() * 0.8 + 0.5,
-                color: colors[index % colors.length],
-                size: 22,
-                finished: false
+        function initDucks() {{
+            ducks = [];
+            rawNames.forEach((name, index) => {{
+                ducks.push({{
+                    name: name,
+                    x: 40 + Math.random() * 40, // Xuất phát lệch nhau chút cho tự nhiên
+                    y: 60 + (index * (280 / Math.max(rawNames.length, 1))),
+                    speed: Math.random() * 0.7 + 0.6,
+                    color: colors[index % colors.length],
+                    size: 20
+                }});
             }});
-        }});
+        }}
 
-        // Sự kiện click vào vịt
-        canvas.addEventListener("click", (e) => {{
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
+        initDucks();
 
-            ducks.forEach(duck => {{
-                const dist = Math.hypot((duck.x + 15) - mouseX, (duck.y) - mouseY);
-                if (dist < duck.size + 15 && !duck.finished) {{
-                    duck.x += 15; // Đẩy vịt tiến lên khi click
-                    scoreEl.innerText = "🚀 Bạn vừa giúp chú vịt '" + duck.name + "' tiến lên!";
+        function togglePause() {{
+            isPaused = !isPaused;
+            document.getElementById("pauseBtn").innerText = isPaused ? "▶️ Tiếp tục" : "⏸️ Tạm dừng";
+            if (!isPaused) {{
+                startTime = Date.now() - elapsedTime;
+            }}
+        }}
+
+        function resetGame() {{
+            initDucks();
+            startTime = Date.now();
+            elapsedTime = 0;
+            isPaused = false;
+            raceFinished = false;
+            document.getElementById("pauseBtn").innerText = "⏸️ Tạm dừng";
+        }}
+
+        // Vẽ vạch đích caro đen trắng
+        function drawCheckeredFinishLine() {{
+            const lineX = 550;
+            const squareSize = 15;
+            for (let y = 0; y < canvas.height; y += squareSize) {{
+                for (let x = 0; x < 30; x += squareSize) {{
+                    ctx.fillStyle = ((x / squareSize + y / squareSize) % 2 === 0) ? "#000" : "#fff";
+                    ctx.fillRect(lineX + x, y, squareSize, squareSize);
                 }}
-            }});
-        }});
+            }}
+        }}
 
-        function drawScene() {{
+        function update() {{
+            if (!isPaused && !raceFinished) {{
+                elapsedTime = Date.now() - startTime;
+            }}
+
+            let seconds = Math.floor((elapsedTime / 1000) % 60);
+            let minutes = Math.floor(elapsedTime / 1000 / 60);
+            timerEl.innerText = "⏱️ " + String(minutes).padStart(2, '0') + ":" + String(seconds).padStart(2, '0');
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 1. Vẽ Vạch Bắt Đầu (Bên trái)
-            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-            ctx.fillRect(50, 0, 15, canvas.height);
-            ctx.fillStyle = "#d32f2f";
-            ctx.font = "bold 14px sans-serif";
-            ctx.save();
-            ctx.translate(40, 260);
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillText("VẠCH BẮT ĐẦU", 0, 0);
-            ctx.restore();
+            // Vẽ hiệu ứng mặt nước gợn sóng phía trên
+            ctx.fillStyle = "rgba(255,255,255,0.2)";
+            ctx.fillRect(0, 0, canvas.width, 40);
 
-            // 2. Vẽ Vạch Chiến Thắng (Bên phải)
-            ctx.fillStyle = "#ffd54f";
-            ctx.fillRect(620, 0, 15, canvas.height);
-            ctx.fillStyle = "#1b5e20";
-            ctx.font = "bold 14px sans-serif";
-            ctx.save();
-            ctx.translate(650, 270);
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillText("VẠCH CHIẾN THẮNG", 0, 0);
-            ctx.restore();
+            // Vẽ vạch đích
+            drawCheckeredFinishLine();
 
-            // 3. Vẽ và cập nhật vị trí từng chú vịt
+            let allFinished = true;
+
+            // Cập nhật và vẽ từng chú vịt
             ducks.forEach((duck) => {{
-                if (!duck.finished) {{
+                if (!isPaused && !raceFinished) {{
                     duck.x += duck.speed;
-                    if (duck.x >= 580) {{
-                        duck.finished = true;
-                        scoreEl.innerText = "🏆 Chú vịt " + duck.name + " đã CHIẾN THẮNG! 🎉";
+                    // Tăng giảm tốc độ ngẫu nhiên để cuộc đua kịch tính
+                    duck.speed += (Math.random() - 0.5) * 0.05;
+                    if (duck.speed < 0.3) duck.speed = 0.3;
+                    if (duck.speed > 2.0) duck.speed = 2.0;
+
+                    if (duck.x >= 530) {{
+                        duck.x = 530; // Dừng lại khi chạm đích
                     }}
                 }}
 
-                // --- Vẽ Thân Vịt ---
+                if (duck.x < 530) {{
+                    allFinished = false;
+                }}
+
+                // --- Vẽ thân vịt ---
                 ctx.fillStyle = duck.color;
                 ctx.beginPath();
                 ctx.ellipse(duck.x, duck.y, duck.size, duck.size * 0.7, 0, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.strokeStyle = "#333";
+                ctx.strokeStyle = "#222";
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
 
-                // --- Vẽ Đầu Vịt ---
+                // --- Vẽ đầu vịt ---
                 ctx.beginPath();
-                ctx.arc(duck.x + 15, duck.y - 12, duck.size * 0.55, 0, Math.PI * 2);
+                ctx.arc(duck.x + 12, duck.y - 10, duck.size * 0.55, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
 
-                // --- Vẽ Mắt ---
-                ctx.fillStyle = "#ffffff";
+                // --- Vẽ mắt vịt ---
+                ctx.fillStyle = "#fff";
                 ctx.beginPath();
-                ctx.arc(duck.x + 18, duck.y - 15, 4, 0, Math.PI * 2);
+                ctx.arc(duck.x + 15, duck.y - 12, 3.5, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillStyle = "#000000";
+                ctx.fillStyle = "#000";
                 ctx.beginPath();
-                ctx.arc(duck.x + 19, duck.y - 15, 2, 0, Math.PI * 2);
+                ctx.arc(duck.x + 16, duck.y - 12, 1.5, 0, Math.PI * 2);
                 ctx.fill();
 
-                // --- Vẽ Mỏ Vịt (Mũi/Miệng) ---
+                // --- Vẽ mỏ vịt ---
                 ctx.fillStyle = "#ff9800";
                 ctx.beginPath();
-                ctx.ellipse(duck.x + 25, duck.y - 10, 7, 4, 0, 0, Math.PI * 2);
+                ctx.ellipse(duck.x + 21, duck.y - 8, 6, 3, 0, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
 
-                // --- In Tên Người Chơi Lên Thân Vịt ---
+                // --- Hộp tên hiển thị trên đầu mỗi con vịt ---
+                ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+                ctx.fillRect(duck.x - 20, duck.y - 32, 45, 16);
                 ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 12px sans-serif";
+                ctx.font = "bold 11px sans-serif";
                 ctx.textAlign = "center";
-                ctx.shadowColor = "black";
-                ctx.shadowBlur = 3;
-                ctx.fillText(duck.name, duck.x, duck.y + 4);
-                ctx.shadowBlur = 0; // Reset hiệu ứng bóng
+                ctx.fillText(duck.name, duck.x + 25, duck.y - 20);
             }});
 
-            requestAnimationFrame(drawScene);
+            if (allFinished && !raceFinished) {{
+                raceFinished = true;
+            }}
+
+            requestAnimationFrame(update);
         }}
 
-        drawScene();
+        update();
     </script>
 </body>
 </html>
