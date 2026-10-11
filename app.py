@@ -1,9 +1,9 @@
 import streamlit as st
 
-st.set_page_config(page_title="Cuộc Đua Vịt STEM", page_icon="🦆", layout="centered")
+st.set_page_config(page_title="Cuộc Đua Vịt STEM - Cổ Vũ", page_icon="🦆", layout="centered")
 
-st.title("🦆 Trò Chơi Đua Vịt - Phiên Bản Sống Động")
-st.write("Nhập tên các thành viên và bấm 'Bắt đầu cuộc đua' để tham gia nhé!")
+st.title("🦆 Trò Chơi Đua Vịt - Phiên Bản Cổ Vũ Sôi Động")
+st.write("Nhập tên các thành viên, bấm 'Bắt đầu cuộc đua' và xem khán giả trên bờ cổ vũ nhé!")
 
 names_input = st.text_input("Nhập tên các chú vịt (cách nhau bởi dấu phẩy):", "Tân, Linh, Nam, Lan, An, Long, Vy")
 names_list = [name.strip() for name in names_input.split(",") if name.strip()]
@@ -31,9 +31,8 @@ game_code = f"""
         <button class="btn btn-secondary" onclick="resetGame()">🔄 Chơi lại</button>
     </div>
 
-    <canvas id="gameCanvas" width="700" height="420"></canvas>
+    <canvas id="gameCanvas" width="700" height="440"></canvas>
 
-    <!-- Thẻ âm thanh nhạc nền (Sử dụng âm thanh vui nhộn trực tuyến) -->
     <audio id="bgMusic" loop>
         <source src="https://actions.google.com/sounds/v1/cartoon/silly_chicken.ogg" type="audio/ogg">
     </audio>
@@ -61,10 +60,10 @@ game_code = f"""
                 ducks.push({{
                     name: name,
                     x: 40,
-                    y: 80 + (index * (300 / Math.max(rawNames.length, 1))),
+                    y: 110 + (index * (290 / Math.max(rawNames.length, 1))),
                     speed: Math.random() * 0.6 + 0.5,
                     color: colors[index % colors.length],
-                    size: 28 // Tăng kích thước vịt to hơn một chút
+                    size: 28
                 }});
             }});
         }}
@@ -104,24 +103,22 @@ game_code = f"""
             bgMusic.currentTime = 0;
         }}
 
-        // Vẽ ông mặt trời và hiệu ứng tia sáng ở góc trên bên phải
+        // Vẽ ông mặt trời ở góc trên bên phải
         function drawSun() {{
             ctx.save();
-            ctx.translate(630, 60);
-            // Tia mặt trời tỏa sáng
+            ctx.translate(630, 45);
             ctx.strokeStyle = "rgba(255, 235, 59, 0.4)";
             ctx.lineWidth = 3;
             for (let i = 0; i < 8; i++) {{
                 ctx.rotate(Math.PI / 4);
                 ctx.beginPath();
-                ctx.moveTo(0, 25);
-                ctx.lineTo(0, 38);
+                ctx.moveTo(0, 22);
+                ctx.lineTo(0, 32);
                 ctx.stroke();
             }}
-            // Thân mặt trời
             ctx.fillStyle = "#ffeb3b";
             ctx.beginPath();
-            ctx.arc(0, 0, 24, 0, Math.PI * 2);
+            ctx.arc(0, 0, 20, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = "#fbc02d";
             ctx.lineWidth = 2;
@@ -129,11 +126,39 @@ game_code = f"""
             ctx.restore();
         }}
 
+        // Vẽ những người đang đứng trên bờ cổ vũ
+        function drawCheeringCrowd() {{
+            const crowdXPositions = [80, 160, 240, 320, 400, 480];
+            crowdXPositions.forEach((x, index) => {{
+                // Thân người/áo đủ màu
+                ctx.fillStyle = index % 2 === 0 ? "#e91e63" : "#3f51b5";
+                ctx.fillRect(x - 8, 45, 16, 20);
+
+                // Đầu người
+                ctx.fillStyle = "#ffe0b2";
+                ctx.beginPath();
+                ctx.arc(x, 34, 7, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Tay đang giơ lên cổ vũ (vẫy tay)
+                ctx.strokeStyle = "#ffe0b2";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                // Tay trái giơ lên
+                ctx.moveTo(x - 8, 50);
+                ctx.lineTo(x - 16, 36);
+                // Tay phải giơ lên
+                ctx.moveTo(x + 8, 50);
+                ctx.lineTo(x + 16, 36);
+                ctx.stroke();
+            }});
+        }}
+
         // Vẽ vạch đích caro đen trắng
         function drawCheckeredFinishLine() {{
             const lineX = 560;
             const squareSize = 15;
-            for (let y = 0; y < canvas.height; y += squareSize) {{
+            for (let y = 60; y < canvas.height; y += squareSize) {{
                 for (let x = 0; x < 30; x += squareSize) {{
                     ctx.fillStyle = ((x / squareSize + y / squareSize) % 2 === 0) ? "#000" : "#fff";
                     ctx.fillRect(lineX + x, y, squareSize, squareSize);
@@ -144,26 +169,32 @@ game_code = f"""
         function update() {{
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 1. Vẽ Ông Mặt Trời
+            // 1. Vẽ dải bờ sông xanh ở phía trên
+            ctx.fillStyle = "#689f38";
+            ctx.fillRect(0, 0, canvas.width, 65);
+
+            // 2. Vẽ Ông Mặt Trời
             drawSun();
 
-            // 2. Vẽ Hiệu ứng sóng nhấp nhô trên mặt nước
+            // 3. Vẽ Khán giả đang cổ vũ trên bờ
+            drawCheeringCrowd();
+
+            // 4. Vẽ Hiệu ứng sóng nhấp nhô trên mặt nước (bắt đầu từ y = 65)
             waveOffset += 0.05;
             ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
             ctx.beginPath();
-            ctx.moveTo(0, 40);
+            ctx.moveTo(0, 65);
             for (let x = 0; x <= canvas.width; x += 20) {{
-                let y = 40 + Math.sin(x * 0.03 + waveOffset) * 6;
+                let y = 65 + Math.sin(x * 0.03 + waveOffset) * 6;
                 ctx.lineTo(x, y);
             }}
-            ctx.lineTo(canvas.width, 0);
-            ctx.lineTo(0, 0);
+            ctx.lineTo(canvas.width, 65);
+            ctx.lineTo(0, 65);
             ctx.fill();
 
-            // 3. Vẽ Vạch Đích
+            // 5. Vẽ Vạch Đích
             drawCheckeredFinishLine();
 
-            // Xử lý thời gian và chuyển động vịt khi đã bấm Bắt đầu
             if (raceStarted && !isPaused && !raceFinished) {{
                 elapsedTime = Date.now() - startTime;
             }}
@@ -182,7 +213,7 @@ game_code = f"""
                     if (duck.speed > 1.8) duck.speed = 1.8;
 
                     if (duck.x >= 540) {{
-                        duck.x = 540; // Dừng lại khi chạm đích
+                        duck.x = 540;
                     }}
                 }}
 
@@ -190,10 +221,9 @@ game_code = f"""
                     allFinished = false;
                 }}
 
-                // Tạo hiệu ứng nhấp nhô lên xuống theo sóng cho con vịt
                 let floatY = duck.y + Math.sin(duck.x * 0.05 + waveOffset) * 3;
 
-                // --- Vẽ thân vịt (to hơn) ---
+                // --- Vẽ thân vịt ---
                 ctx.fillStyle = duck.color;
                 ctx.beginPath();
                 ctx.ellipse(duck.x, floatY, duck.size, duck.size * 0.75, 0, 0, Math.PI * 2);
@@ -225,7 +255,7 @@ game_code = f"""
                 ctx.fill();
                 ctx.stroke();
 
-                // --- Hộp tên hiển thị rõ trên đầu vịt ---
+                // --- Hộp tên hiển thị trên đầu vịt ---
                 ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
                 ctx.fillRect(duck.x - 22, floatY - 42, 50, 18);
                 ctx.fillStyle = "#ffffff";
@@ -248,4 +278,5 @@ game_code = f"""
 </html>
 """
 
-st.components.v1.html(game_code, height=480)
+st.components.v1.html(game_code, height=500)
+
