@@ -1,9 +1,9 @@
 import streamlit as st
 
-st.set_page_config(page_title="Cuộc Đua Vịt STEM - Cổ Vũ", page_icon="🦆", layout="centered")
+st.set_page_config(page_title="Cuộc Đua Vịt STEM - Trọng Tài", page_icon="🦆", layout="centered")
 
-st.title("🦆 Trò Chơi Đua Vịt - Phiên Bản Cổ Vũ Sôi Động")
-st.write("Nhập tên các thành viên, bấm 'Bắt đầu cuộc đua' và xem khán giả trên bờ cổ vũ nhé!")
+st.title("🦆 Trò Chơi Đua Vịt - Cuộc Đua Sôi Động")
+st.write("Nhập tên các thành viên, bấm 'Bắt đầu cuộc đua' để trọng tài thổi còi cho vịt bơi nhé!")
 
 names_input = st.text_input("Nhập tên các chú vịt (cách nhau bởi dấu phẩy):", "Tân, Linh, Nam, Lan, An, Long, Vy")
 names_list = [name.strip() for name in names_input.split(",") if name.strip()]
@@ -33,14 +33,15 @@ game_code = f"""
 
     <canvas id="gameCanvas" width="700" height="440"></canvas>
 
-    <audio id="bgMusic" loop>
-        <source src="https://actions.google.com/sounds/v1/cartoon/silly_chicken.ogg" type="audio/ogg">
-    </audio>
+    <!-- Âm thanh còi trọng tài và nhạc nền -->
+    <audio id="whistleSound" src="https://actions.google.com/sounds/v1/sports/referee_whistle_1.ogg"></audio>
+    <audio id="bgMusic" loop src="https://actions.google.com/sounds/v1/cartoon/silly_chicken.ogg"></audio>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
         const timerEl = document.getElementById("timer");
+        const whistleSound = document.getElementById("whistleSound");
         const bgMusic = document.getElementById("bgMusic");
 
         const rawNames = {names_list};
@@ -48,14 +49,21 @@ game_code = f"""
         
         let ducks = [];
         let raceStarted = false;
+        let refereeBlown = false;
         let isPaused = false;
         let startTime = 0;
         let elapsedTime = 0;
         let raceFinished = false;
+        let winnerName = "";
         let waveOffset = 0;
+        let fireworks = [];
 
         function initDucks() {{
             ducks = [];
+            winnerName = "";
+            fireworks = [];
+            raceStarted = false;
+            refereeBlown = false;
             rawNames.forEach((name, index) => {{
                 ducks.push({{
                     name: name,
@@ -63,7 +71,8 @@ game_code = f"""
                     y: 110 + (index * (290 / Math.max(rawNames.length, 1))),
                     speed: Math.random() * 0.6 + 0.5,
                     color: colors[index % colors.length],
-                    size: 28
+                    size: 28,
+                    finished: false
                 }});
             }});
         }}
@@ -71,11 +80,19 @@ game_code = f"""
         initDucks();
 
         function startRace() {{
-            raceStarted = true;
-            startTime = Date.now();
             document.getElementById("startBtn").style.display = "none";
-            document.getElementById("pauseBtn").style.display = "inline-block";
-            bgMusic.play().catch(e => console.log("Audio play blocked"));
+            
+            // Trọng tài thổi còi trước
+            whistleSound.play().catch(e => console.log("Audio play blocked"));
+            refereeBlown = true;
+
+            // Sau 1.5 giây còi thổi xong thì cuộc đua chính thức bắt đầu
+            setTimeout(() => {{
+                raceStarted = true;
+                startTime = Date.now();
+                document.getElementById("pauseBtn").style.display = "inline-block";
+                bgMusic.play().catch(e => console.log("Audio play blocked"));
+            }}, 1500);
         }}
 
         function togglePause() {{
@@ -91,7 +108,6 @@ game_code = f"""
 
         function resetGame() {{
             initDucks();
-            raceStarted = false;
             isPaused = false;
             raceFinished = false;
             elapsedTime = 0;
@@ -101,9 +117,9 @@ game_code = f"""
             timerEl.innerText = "⏱️ 00:00";
             bgMusic.pause();
             bgMusic.currentTime = 0;
+            whistleSound.currentTime = 0;
         }}
 
-        // Vẽ ông mặt trời ở góc trên bên phải
         function drawSun() {{
             ctx.save();
             ctx.translate(630, 45);
@@ -126,39 +142,68 @@ game_code = f"""
             ctx.restore();
         }}
 
-        // Vẽ những người đang đứng trên bờ cổ vũ
+        // Vẽ trọng tài đứng ở đầu bờ sông cầm còi
+        function drawReferee() {{
+            const refX = 35;
+            const refY = 32;
+
+            // Thân áo trọng tài (áo sọc đen trắng đặc trưng)
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(refX - 8, refY + 8, 16, 20);
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(refX - 4, refY + 8, 3, 20);
+            ctx.fillRect(refX + 2, refY + 8, 3, 20);
+
+            // Đầu trọng tài
+            ctx.fillStyle = "#ffe0b2";
+            ctx.beginPath();
+            ctx.arc(refX, refY, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tay cầm còi hoặc giơ tay
+            ctx.strokeStyle = "#ffe0b2";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            if (refereeBlown) {{
+                // Tay đưa còi lên miệng thổi
+                ctx.moveTo(refX - 8, refY + 14);
+                ctx.lineTo(refX, refY + 4);
+            }} else {{
+                // Tay cầm còi xuôi
+                ctx.moveTo(refX - 8, refY + 14);
+                ctx.lineTo(refX - 14, refY + 22);
+            }}
+            ctx.stroke();
+
+            // Chữ chú thích "Trọng tài" nhỏ bên cạnh
+            ctx.fillStyle = "#333";
+            ctx.font = "bold 10px sans-serif";
+            ctx.textAlign = "left";
+            ctx.fillText("Trọng tài", refX + 12, refY + 4);
+        }}
+
         function drawCheeringCrowd() {{
-            const crowdXPositions = [80, 160, 240, 320, 400, 480];
+            const crowdXPositions = [120, 200, 280, 360, 440, 520];
             crowdXPositions.forEach((x, index) => {{
-                // Thân người/áo đủ màu
                 ctx.fillStyle = index % 2 === 0 ? "#e91e63" : "#3f51b5";
                 ctx.fillRect(x - 8, 45, 16, 20);
-
-                // Đầu người
                 ctx.fillStyle = "#ffe0b2";
                 ctx.beginPath();
                 ctx.arc(x, 34, 7, 0, Math.PI * 2);
                 ctx.fill();
-
-                // Tay đang giơ lên cổ vũ (vẫy tay)
                 ctx.strokeStyle = "#ffe0b2";
                 ctx.lineWidth = 3;
                 ctx.beginPath();
-                // Tay trái giơ lên
-                ctx.moveTo(x - 8, 50);
-                ctx.lineTo(x - 16, 36);
-                // Tay phải giơ lên
-                ctx.moveTo(x + 8, 50);
-                ctx.lineTo(x + 16, 36);
+                ctx.moveTo(x - 8, 50); ctx.lineTo(x - 16, 36);
+                ctx.moveTo(x + 8, 50); ctx.lineTo(x + 16, 36);
                 ctx.stroke();
             }});
         }}
 
-        // Vẽ vạch đích caro đen trắng
         function drawCheckeredFinishLine() {{
             const lineX = 560;
             const squareSize = 15;
-            for (let y = 60; y < canvas.height; y += squareSize) {{
+            for (let y = 65; y < canvas.height; y += squareSize) {{
                 for (let x = 0; x < 30; x += squareSize) {{
                     ctx.fillStyle = ((x / squareSize + y / squareSize) % 2 === 0) ? "#000" : "#fff";
                     ctx.fillRect(lineX + x, y, squareSize, squareSize);
@@ -166,20 +211,35 @@ game_code = f"""
             }}
         }}
 
+        function createFirework() {{
+            const fx = 575;
+            const fy = 150 + Math.random() * 200;
+            const colorsList = ["#ff5252", "#ffeb3b", "#00bcd4", "#ab47bc", "#ff9800"];
+            let particles = [];
+            for (let i = 0; i < 30; i++) {{
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 4 + 2;
+                particles.push({{
+                    x: fx, y: fy,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    color: colorsList[Math.floor(Math.random() * colorsList.length)],
+                    alpha: 1
+                }});
+            }}
+            fireworks.push(particles);
+        }}
+
         function update() {{
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 1. Vẽ dải bờ sông xanh ở phía trên
             ctx.fillStyle = "#689f38";
             ctx.fillRect(0, 0, canvas.width, 65);
 
-            // 2. Vẽ Ông Mặt Trời
             drawSun();
-
-            // 3. Vẽ Khán giả đang cổ vũ trên bờ
+            drawReferee();
             drawCheeringCrowd();
 
-            // 4. Vẽ Hiệu ứng sóng nhấp nhô trên mặt nước (bắt đầu từ y = 65)
             waveOffset += 0.05;
             ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
             ctx.beginPath();
@@ -192,7 +252,6 @@ game_code = f"""
             ctx.lineTo(0, 65);
             ctx.fill();
 
-            // 5. Vẽ Vạch Đích
             drawCheckeredFinishLine();
 
             if (raceStarted && !isPaused && !raceFinished) {{
@@ -203,27 +262,56 @@ game_code = f"""
             let minutes = Math.floor(elapsedTime / 1000 / 60);
             timerEl.innerText = "⏱️ " + String(minutes).padStart(2, '0') + ":" + String(seconds).padStart(2, '0');
 
-            let allFinished = true;
+            if (!raceFinished) {{
+                ducks.forEach((duck) => {{
+                    if (raceStarted && !isPaused) {{
+                        duck.x += duck.speed;
+                        duck.speed += (Math.random() - 0.5) * 0.04;
+                        if (duck.speed < 0.4) duck.speed = 0.4;
+                        if (duck.speed > 1.8) duck.speed = 1.8;
+
+                        if (duck.x >= 540 && !raceFinished) {{
+                            raceFinished = true;
+                            winnerName = duck.name;
+                            duck.x = 540;
+                        }}
+                    }}
+                }});
+            }}
+
+            if (raceFinished) {{
+                if (Math.random() < 0.08) {{
+                    createFirework();
+                }}
+                fireworks.forEach((particles, index) => {{
+                    particles.forEach(p => {{
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.alpha -= 0.02;
+                        ctx.save();
+                        ctx.globalAlpha = Math.max(p.alpha, 0);
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }});
+                    if (particles[0].alpha <= 0) {{
+                        fireworks.splice(index, 1);
+                    }}
+                }});
+
+                ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+                ctx.fillRect(150, 180, 400, 70);
+                ctx.fillStyle = "#ffeb3b";
+                ctx.font = "bold 18px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("🎉 Chúc mừng " + winnerName + " đã về đích đầu tiên! 🎉", 350, 222);
+            }}
 
             ducks.forEach((duck) => {{
-                if (raceStarted && !isPaused && !raceFinished) {{
-                    duck.x += duck.speed;
-                    duck.speed += (Math.random() - 0.5) * 0.04;
-                    if (duck.speed < 0.4) duck.speed = 0.4;
-                    if (duck.speed > 1.8) duck.speed = 1.8;
-
-                    if (duck.x >= 540) {{
-                        duck.x = 540;
-                    }}
-                }}
-
-                if (duck.x < 540) {{
-                    allFinished = false;
-                }}
-
                 let floatY = duck.y + Math.sin(duck.x * 0.05 + waveOffset) * 3;
 
-                // --- Vẽ thân vịt ---
                 ctx.fillStyle = duck.color;
                 ctx.beginPath();
                 ctx.ellipse(duck.x, floatY, duck.size, duck.size * 0.75, 0, 0, Math.PI * 2);
@@ -232,30 +320,38 @@ game_code = f"""
                 ctx.lineWidth = 1.8;
                 ctx.stroke();
 
-                // --- Vẽ đầu vịt ---
                 ctx.beginPath();
                 ctx.arc(duck.x + 16, floatY - 14, duck.size * 0.52, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
 
-                // --- Vẽ mắt vịt ---
-                ctx.fillStyle = "#fff";
-                ctx.beginPath();
-                ctx.arc(duck.x + 20, floatY - 17, 4, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = "#000";
-                ctx.beginPath();
-                ctx.arc(duck.x + 21, floatY - 17, 2, 0, Math.PI * 2);
-                ctx.fill();
+                if (raceFinished && duck.name !== winnerName) {{
+                    ctx.fillStyle = "#000";
+                    ctx.font = "bold 12px sans-serif";
+                    ctx.fillText("✖ ✖", duck.x + 16, floatY - 18);
+                    
+                    ctx.strokeStyle = "#000";
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.arc(duck.x + 28, floatY - 5, 4, Math.PI, 0, false);
+                    ctx.stroke();
+                }} else {{
+                    ctx.fillStyle = "#fff";
+                    ctx.beginPath();
+                    ctx.arc(duck.x + 20, floatY - 17, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = "#000";
+                    ctx.beginPath();
+                    ctx.arc(duck.x + 21, floatY - 17, 2, 0, Math.PI * 2);
+                    ctx.fill();
 
-                // --- Vẽ mỏ vịt ---
-                ctx.fillStyle = "#ff9800";
-                ctx.beginPath();
-                ctx.ellipse(duck.x + 28, floatY - 12, 7, 3.5, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
+                    ctx.fillStyle = "#ff9800";
+                    ctx.beginPath();
+                    ctx.ellipse(duck.x + 28, floatY - 12, 7, 3.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }}
 
-                // --- Hộp tên hiển thị trên đầu vịt ---
                 ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
                 ctx.fillRect(duck.x - 22, floatY - 42, 50, 18);
                 ctx.fillStyle = "#ffffff";
@@ -263,11 +359,6 @@ game_code = f"""
                 ctx.textAlign = "center";
                 ctx.fillText(duck.name, duck.x + 3, floatY - 29);
             }});
-
-            if (raceStarted && allFinished && !raceFinished) {{
-                raceFinished = true;
-                bgMusic.pause();
-            }}
 
             requestAnimationFrame(update);
         }}
@@ -279,4 +370,3 @@ game_code = f"""
 """
 
 st.components.v1.html(game_code, height=500)
-
