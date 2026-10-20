@@ -55,7 +55,6 @@ game_code = f"""
         let fireworkTriggered = false;
         let soundEnabled = true;
 
-        // Khởi tạo Web Audio API để phát âm thanh mượt mà trực tiếp
         let audioCtx = null;
         function initAudio() {{
             if (!audioCtx) {{
@@ -307,18 +306,16 @@ game_code = f"""
                 }});
             }}
 
-            // Kích hoạt pháo hoa nổ đúng 1 lần duy nhất khi có người về đích
             if (raceFinished && !fireworkTriggered) {{
                 fireworkTriggered = true;
                 createSingleFirework();
             }}
 
-            // Cập nhật pháo hoa
             fireworks.forEach((particles, index) => {{
                 particles.forEach(p => {{
                     p.x += p.vx;
                     p.y += p.vy;
-                    p.vy += 0.08; // trọng lực nhẹ
+                    p.vy += 0.08;
                     p.alpha -= 0.015;
                     ctx.save();
                     ctx.globalAlpha = Math.max(p.alpha, 0);
@@ -351,7 +348,6 @@ game_code = f"""
                 ctx.stroke();
 
                 if (raceFinished && duck.name !== winnerName) {{
-                    // Biểu cảm vịt thua buồn tự nhiên, mếu kèm giọt nước mắt
                     ctx.fillStyle = "#000";
                     ctx.beginPath();
                     ctx.arc(duck.x + 14, floatY - 16, 2, 0, Math.PI * 2);
@@ -364,13 +360,11 @@ game_code = f"""
                     ctx.arc(duck.x + 18, floatY - 8, 4, Math.PI, 0, false);
                     ctx.stroke();
 
-                    // Giọt nước mắt rơi
                     ctx.fillStyle = "#00bcd4";
                     ctx.beginPath();
                     ctx.arc(duck.x + 23, floatY - 12, 2.5, 0, Math.PI * 2);
                     ctx.fill();
                 }} else {{
-                    // Mắt bình thường / vui
                     ctx.fillStyle = "#fff";
                     ctx.beginPath();
                     ctx.arc(duck.x + 20, floatY - 17, 4, 0, Math.PI * 2);
@@ -395,7 +389,7 @@ game_code = f"""
                 ctx.fillText(duck.name, duck.x + 3, floatY - 29);
             }});
 
-            // 2. VẼ DÒNG CHỮ THÔNG BÁO CHIẾN THẮNG SAU CÙNG (ĐẢM BẢO NỔI LÊN TRÊN HẾT, KHÔNG BỊ VỊT ĐÈ)
+            // 2. VẼ DÒNG CHỮ THÔNG BÁO CHIẾN THẮNG SAU CÙNG (NỔI LÊN TRÊN HẾT, KHÔNG BỊ VỊT ĐÈ)
             if (raceFinished) {{
                 ctx.save();
                 ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
